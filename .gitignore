@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.vscode/
+quikr_car - quikr_car.csv
+Cleaned_Car.csv
+GBModel.pkl
+LinerRegressionModel.pkl
+notebook002f99c08d.ipynb

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CarVal — AI Car Price Estimator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: rgba(255,255,255,0.07);
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --accent-glow: rgba(108,99,255,0.25);
+    --text: #f0f0f5;
+    --muted: #7b7b9a;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --card-radius: 16px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(108,99,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(167,139,250,0.08) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 0 32px; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+    background: linear-gradient(135deg, #6c63ff, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .nav-badge {
+    font-size: 11px; font-weight: 600; color: var(--accent2);
+    background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.25);
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px;
+  }
+  main {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto;
+    padding: 100px 24px 80px;
+  }
+  .hero { text-align: center; margin-bottom: 56px; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--accent2);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 20px;
+    background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.2);
+    padding: 6px 16px; border-radius: 20px;
+  }
+  .hero-eyebrow::before {
+    content: ''; width: 6px; height: 6px;
+    background: var(--accent); border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 6vw, 60px); font-weight: 800;
+    line-height: 1.05; letter-spacing: -2px; margin-bottom: 18px;
+  }
+  .hero h1 span {
+    background: linear-gradient(135deg, #6c63ff 0%, #a78bfa 50%, #c4b5fd 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-sub { font-size: 17px; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+  .stats-row {
+    display: flex; justify-content: center; gap: 40px;
+    margin: 36px 0 52px; flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  .form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 24px; padding: 40px; position: relative; overflow: hidden;
+  }
+  .form-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(108,99,255,0.5), transparent);
+  }
+
+  /* SECTION DIVIDERS inside form */
+  .form-section-title {
+    font-size: 11px; font-weight: 700; color: var(--accent2);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin: 28px 0 16px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .form-section-title:first-child { margin-top: 0; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-group.third { grid-column: span 1; }
+
+  label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; }
+
+  select, input[type="number"] {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 12px 16px;
+    font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none; -webkit-appearance: none; width: 100%; outline: none;
+  }
+  select:focus, input[type="number"]:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  select option { background: #1c1c28; }
+  select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* TOGGLE BUTTONS */
+  .toggle-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .toggle-btn {
+    flex: 1; min-width: 70px; padding: 10px 8px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-align: center; white-space: nowrap;
+  }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+  .toggle-btn.active {
+    background: rgba(108,99,255,0.15); border-color: var(--accent); color: var(--accent2);
+  }
+
+  /* SLIDER */
+  .slider-display { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  .slider-display span { color: var(--muted); font-size: 13px; font-weight: 400; }
+  input[type="range"] {
+    padding: 0; height: 4px; border-radius: 4px;
+    background: linear-gradient(to right, var(--accent) 0%, var(--surface2) 0%);
+    cursor: pointer; border: none; width: 100%; appearance: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--bg); box-shadow: 0 0 8px var(--accent-glow);
+  }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* AUTOFILL BADGE */
+  .autofill-badge {
+    display: none; align-items: center; gap: 6px;
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25);
+    color: var(--success); font-size: 12px; font-weight: 600;
+    padding: 5px 12px; border-radius: 8px; margin-bottom: 16px;
+  }
+  .autofill-badge.visible { display: flex; }
+
+  /* SUBMIT */
+  .submit-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, #6c63ff, #8b7cf8);
+    border: none; border-radius: 12px; color: white;
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; margin-top: 28px; transition: all 0.2s; letter-spacing: 0.5px;
+  }
+  .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px var(--accent-glow); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-spinner {
+    display: none; width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* RESULT */
+  .result-section { margin-top: 32px; display: none; }
+  .result-section.visible { display: block; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  .result-main {
+    background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(167,139,250,0.05));
+    border: 1px solid rgba(108,99,255,0.3); border-radius: 16px;
+    padding: 32px; text-align: center; margin-bottom: 16px; position: relative; overflow: hidden;
+  }
+  .result-main::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .result-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .result-price {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 7vw, 60px); font-weight: 800;
+    background: linear-gradient(135deg, #6c63ff, #c4b5fd);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1; margin-bottom: 6px;
+  }
+  .result-sub { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+  .result-confidence {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25);
+    color: var(--success); font-size: 12px; font-weight: 600;
+    padding: 5px 14px; border-radius: 20px;
+  }
+  .result-confidence::before { content: '✓ '; }
+
+  .market-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+  .market-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; text-align: center;
+  }
+  .market-card-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; }
+  .market-card-value { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .market-card.low .market-card-value { color: var(--success); }
+  .market-card.avg .market-card-value { color: var(--warning); }
+  .market-card.high .market-card-value { color: var(--danger); }
+
+  .price-meter-wrap {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+  }
+  .price-meter-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 12px; }
+  .price-meter-bar {
+    height: 8px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+    position: relative; margin-bottom: 8px;
+  }
+  .price-meter-marker {
+    position: absolute; top: -5px; width: 18px; height: 18px;
+    background: white; border-radius: 50%; border: 3px solid var(--accent);
+    transform: translateX(-50%);
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .price-meter-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+  .error-msg {
+    background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25);
+    border-radius: 10px; padding: 14px 18px; color: var(--danger);
+    font-size: 13px; margin-top: 16px; display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  /* HOW IT WORKS */
+  .how-section { margin-top: 72px; }
+  .section-label { font-size: 12px; font-weight: 600; color: var(--accent2); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 36px; }
+  .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .how-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 28px; transition: border-color 0.2s; }
+  .how-card:hover { border-color: rgba(108,99,255,0.3); }
+  .how-num { font-family: 'Syne', sans-serif; font-size: 40px; font-weight: 800; color: rgba(108,99,255,0.15); margin-bottom: 12px; line-height: 1; }
+  .how-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .how-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  footer { position: relative; z-index: 1; text-align: center; padding: 40px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  footer strong { color: var(--accent2); }
+
+  @media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full, .form-group.third { grid-column: 1; }
+    .how-grid { grid-template-columns: 1fr; }
+    .market-grid { grid-template-columns: 1fr; }
+    .stats-row { gap: 20px; }
+    .stat-divider { display: none; }
+    nav { padding: 0 16px; }
+    .form-card { padding: 24px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">CarVal</div>
+  <div class="nav-badge">90% ACCURACY</div>
+</nav>
+
+<main>
+  <div class="hero">
+    <div class="hero-eyebrow">ML Price Intelligence</div>
+    <h1>Know Your Car's<br/><span>True Market Value</span></h1>
+    <p class="hero-sub">AI-powered price estimates trained on 6,000+ real transactions across 11 Indian cities.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-value">6,019</div><div class="stat-label">Cars Analyzed</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-value">30</div><div class="stat-label">Brands</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-value">90%</div><div class="stat-label">R² Accuracy</div></div>
+    <div class="stat-divider"></div>
+    <div class="stat"><div class="stat-value">11</div><div class="stat-label">Cities Covered</div></div>
+  </div>
+
+  <div class="form-card">
+
+    <div class="autofill-badge" id="autofillBadge">
+      ✦ Specs auto-filled from dataset — verify before submitting
+    </div>
+
+    <!-- CAR IDENTITY -->
+    <div class="form-section-title">🚗 Car Identity</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Brand</label>
+        <select id="companySelect" onchange="onCompanyChange()">
+          <option value="">Select brand…</option>
+          {% for c in meta.companies %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Model</label>
+        <select id="carSelect" disabled onchange="onCarChange()">
+          <option value="">Select brand first…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Location / City</label>
+        <select id="locationSelect">
+          <option value="">Select city…</option>
+          {% for loc in meta.locations %}
+          <option value="{{ loc }}">{{ loc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Owner Type</label>
+        <div class="toggle-group" id="ownerToggle">
+          {% for o in meta.owner_types %}
+          <button class="toggle-btn {% if loop.first %}active{% endif %}" onclick="setToggle('owner', '{{ o }}', this)">{{ o }}</button>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="ownerInput" value="{{ meta.owner_types[0] }}"/>
+      </div>
+    </div>
+
+    <!-- USAGE -->
+    <div class="form-section-title">📊 Usage Details</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Year of Purchase</label>
+        <div class="slider-display" id="yearDisplay">2015</div>
+        <input type="range" id="yearSlider" min="{{ meta.year_min }}" max="{{ meta.year_max }}" value="2015" oninput="updateSlider('year')"/>
+        <div class="slider-labels"><span>{{ meta.year_min }}</span><span>{{ meta.year_max }}</span></div>
+      </div>
+      <div class="form-group">
+        <label>Kilometres Driven</label>
+        <div class="slider-display" id="kmsDisplay">50,000 <span>km</span></div>
+        <input type="range" id="kmsSlider" min="0" max="500000" step="5000" value="50000" oninput="updateSlider('kms')"/>
+        <div class="slider-labels"><span>0</span><span>5,00,000 km</span></div>
+      </div>
+    </div>
+
+    <!-- SPECS -->
+    <div class="form-section-title">⚙️ Car Specifications</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Fuel Type</label>
+        <div class="toggle-group" id="fuelToggle">
+          {% for f in meta.fuel_types %}
+          <button class="toggle-btn {% if loop.first %}active{% endif %}" onclick="setToggle('fuel', '{{ f }}', this)">{{ f }}</button>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="fuelInput" value="{{ meta.fuel_types[0] }}"/>
+      </div>
+      <div class="form-group full">
+        <label>Transmission</label>
+        <div class="toggle-group" id="transmissionToggle">
+          {% for t in meta.transmissions %}
+          <button class="toggle-btn {% if loop.first %}active{% endif %}" onclick="setToggle('transmission', '{{ t }}', this)">{{ t }}</button>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="transmissionInput" value="{{ meta.transmissions[0] }}"/>
+      </div>
+      <div class="form-group">
+        <label>Mileage (kmpl)</label>
+        <input type="number" id="mileageInput" placeholder="e.g. 18.5" step="0.1" min="0"/>
+      </div>
+      <div class="form-group">
+        <label>Engine (CC)</label>
+        <input type="number" id="engineInput" placeholder="e.g. 1197" min="0"/>
+      </div>
+      <div class="form-group">
+        <label>Power (bhp)</label>
+        <input type="number" id="powerInput" placeholder="e.g. 82.0" step="0.1" min="0"/>
+      </div>
+      <div class="form-group">
+        <label>Seats</label>
+        <select id="seatsSelect">
+          {% for s in meta.seats_options %}
+          <option value="{{ s }}" {% if s == 5 %}selected{% endif %}>{{ s }} Seats</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="predict()">
+      <span id="btnText">Estimate Price →</span>
+      <div class="btn-spinner" id="btnSpinner"></div>
+    </button>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- RESULT -->
+    <div class="result-section" id="resultSection">
+      <div class="result-main">
+        <div class="result-label">Estimated Market Price</div>
+        <div class="result-price" id="resultPrice">₹0</div>
+        <div class="result-sub" id="resultSub"></div>
+        <div class="result-confidence">90% R² Model · GradientBoosting</div>
+      </div>
+
+      <div class="market-grid" id="marketGrid" style="display:none">
+        <div class="market-card low"><div class="market-card-label">Market Low</div><div class="market-card-value" id="marketLow">—</div></div>
+        <div class="market-card avg"><div class="market-card-label">Market Avg</div><div class="market-card-value" id="marketAvg">—</div></div>
+        <div class="market-card high"><div class="market-card-label">Market High</div><div class="market-card-value" id="marketHigh">—</div></div>
+      </div>
+
+      <div class="price-meter-wrap" id="meterWrap" style="display:none">
+        <div class="price-meter-label">Where Your Price Sits in the Market</div>
+        <div class="price-meter-bar">
+          <div class="price-meter-marker" id="meterMarker" style="left:50%"></div>
+        </div>
+        <div class="price-meter-ends">
+          <span id="meterLow">—</span><span id="meterHigh">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="how-section">
+    <div class="section-label">Under the Hood</div>
+    <div class="section-title">How CarVal Works</div>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-num">01</div>
+        <div class="how-title">Rich Dataset</div>
+        <div class="how-desc">Trained on 6,019 real used car listings across 11 Indian cities covering 30 brands with 13 features including engine, power, and mileage.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">02</div>
+        <div class="how-title">Gradient Boosting ML</div>
+        <div class="how-desc">500-estimator GradientBoostingRegressor with feature engineering — car age, km/year ratio — achieving 90% R² cross-validated accuracy.</div>
+      </div>
+      <div class="how-card">
+        <div class="how-num">03</div>
+        <div class="how-title">Market Context</div>
+        <div class="how-desc">Beyond the AI estimate, we show real market low, average and high for similar cars — so you know exactly where your car stands.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built by <strong>Anu Mishra</strong> · Gradient Boosting ML · 6,019 transactions · 11 Indian cities
+</footer>
+
+<script>
+const companyCars = {{ company_cars | tojson }};
+
+function onCompanyChange() {
+  const company = document.getElementById('companySelect').value;
+  const carSelect = document.getElementById('carSelect');
+  carSelect.innerHTML = '';
+  if (!company) { carSelect.disabled = true; carSelect.innerHTML = '<option value="">Select brand first…</option>'; return; }
+  carSelect.disabled = false;
+  const placeholder = document.createElement('option');
+  placeholder.value = ''; placeholder.textContent = 'Select model…';
+  carSelect.appendChild(placeholder);
+  (companyCars[company] || []).forEach(car => {
+    const opt = document.createElement('option');
+    opt.value = car; opt.textContent = car;
+    carSelect.appendChild(opt);
+  });
+  document.getElementById('autofillBadge').classList.remove('visible');
+}
+
+async function onCarChange() {
+  const name = document.getElementById('carSelect').value;
+  if (!name) return;
+  try {
+    const res = await fetch('/autofill', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('mileageInput').value = data.mileage;
+      document.getElementById('engineInput').value  = data.engine;
+      document.getElementById('powerInput').value   = data.power;
+      document.getElementById('seatsSelect').value  = data.seats;
+      // Set fuel toggle
+      document.querySelectorAll('#fuelToggle .toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.trim() === data.fuel_type);
+      });
+      document.getElementById('fuelInput').value = data.fuel_type;
+      // Set transmission toggle
+      document.querySelectorAll('#transmissionToggle .toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.trim() === data.transmission);
+      });
+      document.getElementById('transmissionInput').value = data.transmission;
+      document.getElementById('autofillBadge').classList.add('visible');
+    }
+  } catch(e) {}
+}
+
+function updateSlider(type) {
+  if (type === 'year') {
+    const slider = document.getElementById('yearSlider');
+    const val = slider.value;
+    document.getElementById('yearDisplay').textContent = val;
+    const pct = ((val - slider.min) / (slider.max - slider.min)) * 100;
+    slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--surface2) ${pct}%)`;
+  } else {
+    const slider = document.getElementById('kmsSlider');
+    const val = parseInt(slider.value);
+    document.getElementById('kmsDisplay').innerHTML = val.toLocaleString('en-IN') + ' <span>km</span>';
+    const pct = (val / 500000) * 100;
+    slider.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--surface2) ${pct}%)`;
+  }
+}
+
+function setToggle(type, value, btn) {
+  const groupId = type === 'fuel' ? 'fuelToggle' : type === 'transmission' ? 'transmissionToggle' : 'ownerToggle';
+  const inputId = type === 'fuel' ? 'fuelInput' : type === 'transmission' ? 'transmissionInput' : 'ownerInput';
+  document.querySelectorAll(`#${groupId} .toggle-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(inputId).value = value;
+}
+
+function formatLakh(n) {
+  if (n >= 100) return '₹' + (n/100).toFixed(2) + ' Cr';
+  return '₹' + n.toFixed(2) + ' L';
+}
+
+async function predict() {
+  const company      = document.getElementById('companySelect').value;
+  const name         = document.getElementById('carSelect').value;
+  const location     = document.getElementById('locationSelect').value;
+  const year         = document.getElementById('yearSlider').value;
+  const kms          = document.getElementById('kmsSlider').value;
+  const fuel         = document.getElementById('fuelInput').value;
+  const transmission = document.getElementById('transmissionInput').value;
+  const owner        = document.getElementById('ownerInput').value;
+  const mileage      = document.getElementById('mileageInput').value;
+  const engine       = document.getElementById('engineInput').value;
+  const power        = document.getElementById('powerInput').value;
+  const seats        = document.getElementById('seatsSelect').value;
+  const errEl        = document.getElementById('errorMsg');
+
+  if (!company || !name)     { showError('Please select a brand and model.'); return; }
+  if (!location)             { showError('Please select a city.'); return; }
+  if (!mileage || !engine || !power) { showError('Please fill in Mileage, Engine CC, and Power.'); return; }
+
+  errEl.classList.remove('visible');
+  const btn = document.getElementById('submitBtn');
+  document.getElementById('btnText').style.display = 'none';
+  document.getElementById('btnSpinner').style.display = 'block';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name, location, year: parseInt(year), kms_driven: parseInt(kms),
+        fuel_type: fuel, transmission, owner_type: owner,
+        mileage: parseFloat(mileage), engine: parseFloat(engine),
+        power: parseFloat(power), seats: parseFloat(seats)
+      })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    document.getElementById('resultPrice').textContent = formatLakh(data.price_lakh);
+    document.getElementById('resultSub').textContent = '≈ ₹' + data.price_rs.toLocaleString('en-IN') + ' · $' + Math.round(data.price_rs / 83).toLocaleString() + ' USD';
+
+    const section = document.getElementById('resultSection');
+    section.style.display = 'block';
+    section.classList.remove('visible');
+    requestAnimationFrame(() => section.classList.add('visible'));
+
+    if (data.market_low && data.market_high && data.market_avg) {
+      document.getElementById('marketLow').textContent  = formatLakh(data.market_low);
+      document.getElementById('marketAvg').textContent  = formatLakh(data.market_avg);
+      document.getElementById('marketHigh').textContent = formatLakh(data.market_high);
+      document.getElementById('marketGrid').style.display = 'grid';
+      const pct = Math.min(100, Math.max(0, ((data.price_lakh - data.market_low) / (data.market_high - data.market_low)) * 100));
+      document.getElementById('meterMarker').style.left = pct + '%';
+      document.getElementById('meterLow').textContent  = formatLakh(data.market_low);
+      document.getElementById('meterHigh').textContent = formatLakh(data.market_high);
+      document.getElementById('meterWrap').style.display = 'block';
+    }
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch(e) {
+    showError('Prediction failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btnText').style.display = 'inline';
+    document.getElementById('btnSpinner').style.display = 'none';
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+</script>
+</body>
+</html>

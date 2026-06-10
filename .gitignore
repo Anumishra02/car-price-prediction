@@ -6,5 +6,8 @@ venv/
 quikr_car - quikr_car.csv
 Cleaned_Car.csv
 GBModel.pkl
-LinerRegressionModel.pkl
+GBModel_v2.pkl
+meta_v2.json
+dataset.csv
+LinearRegressionModel.pkl
 notebook002f99c08d.ipynb
